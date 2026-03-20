@@ -1,0 +1,25 @@
+.git/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Runtime data
+data/*.db
+data/*.db-*
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend
+backend/bin/
+backend/.cache/
+backend/device_inventory.db
+
+# Logs / temp
+*.log
+*.tmp
+*.bak
