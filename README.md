@@ -94,11 +94,3 @@ cd backend && go test ./...
 - `CORS_ORIGIN` — allowed origin (по умолчанию `*`)
 - `VITE_MOCK_API` — `true` чтобы фронт работал без бэкенда
 
-## Задание 4 — исправленные фрагменты
-
-В папке `task/` лежат исправленные фрагменты кода из задания 4:
-
-- `task4-fragment-go-wave-1-fixed.go` — Go-фрагмент (контекст, обработка ошибок, аудит)
-- `task4-fragment-ts-wave-1-fixed.ts` — TypeScript-фрагмент (fetch, debounce, AbortController)
-
-
