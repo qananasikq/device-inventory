@@ -8,6 +8,7 @@ Thumbs.db
 # Runtime data
 data/*.db
 data/*.db-*
+data/
 
 # Frontend
 frontend/node_modules/
@@ -17,9 +18,9 @@ frontend/.vite/
 # Backend
 backend/bin/
 backend/.cache/
-backend/device_inventory.db
 
 # Logs / temp
 *.log
 *.tmp
 *.bak
+*.exe

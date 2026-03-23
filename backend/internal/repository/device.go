@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -27,17 +28,12 @@ func NewDeviceRepo(db *sql.DB) *DeviceRepo {
 }
 
 func (r *DeviceRepo) Create(d *Device) error {
-	res, err := r.db.Exec(
-		"INSERT INTO devices (hostname, ip, location, is_active) VALUES (?, ?, ?, ?)",
+	return r.db.QueryRow(
+		`INSERT INTO devices (hostname, ip, location, is_active)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id, created_at`,
 		d.Hostname, d.IP, d.Location, d.IsActive,
-	)
-	if err != nil {
-		return err
-	}
-	id, _ := res.LastInsertId()
-	d.ID = id
-
-	return r.db.QueryRow("SELECT created_at FROM devices WHERE id = ?", id).Scan(&d.CreatedAt)
+	).Scan(&d.ID, &d.CreatedAt)
 }
 
 // фильтры опциональные, WHERE собирается по ситуации
@@ -45,19 +41,18 @@ func (r *DeviceRepo) GetAll(isActive *bool, search string) ([]Device, error) {
 	q := "SELECT id, hostname, ip, location, is_active, created_at FROM devices"
 	var where []string
 	var args []any
+	argIdx := 1
 
 	if isActive != nil {
-		where = append(where, "is_active = ?")
-		if *isActive {
-			args = append(args, 1)
-		} else {
-			args = append(args, 0)
-		}
+		where = append(where, fmt.Sprintf("is_active = $%d", argIdx))
+		args = append(args, *isActive)
+		argIdx++
 	}
 
 	if s := strings.TrimSpace(search); s != "" {
-		where = append(where, "hostname LIKE ?")
+		where = append(where, fmt.Sprintf("hostname ILIKE $%d", argIdx))
 		args = append(args, "%"+s+"%")
+		argIdx++
 	}
 
 	if len(where) > 0 {
@@ -88,7 +83,7 @@ func (r *DeviceRepo) GetAll(isActive *bool, search string) ([]Device, error) {
 func (r *DeviceRepo) GetByID(id string) (*Device, error) {
 	var d Device
 	err := r.db.QueryRow(
-		"SELECT id, hostname, ip, location, is_active, created_at FROM devices WHERE id = ?", id,
+		"SELECT id, hostname, ip, location, is_active, created_at FROM devices WHERE id = $1", id,
 	).Scan(&d.ID, &d.Hostname, &d.IP, &d.Location, &d.IsActive, &d.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, ErrDeviceNotFound
@@ -101,7 +96,7 @@ func (r *DeviceRepo) GetByID(id string) (*Device, error) {
 
 func (r *DeviceRepo) Update(id string, upd Device) (*Device, error) {
 	res, err := r.db.Exec(
-		"UPDATE devices SET hostname=?, ip=?, location=?, is_active=? WHERE id=?",
+		"UPDATE devices SET hostname=$1, ip=$2, location=$3, is_active=$4 WHERE id=$5",
 		upd.Hostname, upd.IP, upd.Location, upd.IsActive, id,
 	)
 	if err != nil {
@@ -116,7 +111,7 @@ func (r *DeviceRepo) Update(id string, upd Device) (*Device, error) {
 
 // soft delete
 func (r *DeviceRepo) Deactivate(id string) error {
-	res, err := r.db.Exec("UPDATE devices SET is_active = 0 WHERE id = ?", id)
+	res, err := r.db.Exec("UPDATE devices SET is_active = FALSE WHERE id = $1", id)
 	if err != nil {
 		return err
 	}

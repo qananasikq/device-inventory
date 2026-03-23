@@ -9,7 +9,7 @@ SELECT
     COUNT(c.id) AS config_count
 FROM devices d
 LEFT JOIN configs c ON c.device_id = d.id
-WHERE d.is_active = 1
+WHERE d.is_active = TRUE
 GROUP BY d.id
 ORDER BY config_count DESC;
 
@@ -21,9 +21,9 @@ SELECT
     l.message,
     l.created_at
 FROM logs l
-WHERE l.device_id = ?
+WHERE l.device_id = $1
 ORDER BY l.created_at DESC
-LIMIT ?;
+LIMIT $2;
 
 
 -- Тяжёлый запрос — все устройства + дата последнего лога + количество конфигов
@@ -62,10 +62,10 @@ ORDER BY ll.last_log DESC;
 
 -- Индексы
 
-CREATE INDEX configs_device ON configs(device_id);
-CREATE INDEX logs_device_ts ON logs(device_id, created_at DESC);
-CREATE INDEX devices_active ON devices(is_active);
+CREATE INDEX IF NOT EXISTS configs_device ON configs(device_id);
+CREATE INDEX IF NOT EXISTS logs_device_ts ON logs(device_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS devices_active ON devices(is_active);
 
 -- configs_device — ускоряет JOIN по device_id, без него full scan
 -- logs_device_ts — составной, покрывает фильтр + сортировку по дате
--- devices_active — ускоряет WHERE is_active = 1 если активных мало
+-- devices_active — ускоряет WHERE is_active = TRUE если активных мало

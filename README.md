@@ -1,6 +1,6 @@
 # device-inventory
 
-Учёт сетевых устройств. Go + SQLite, React + TypeScript.
+Учёт сетевых устройств. Go + PostgreSQL, React + TypeScript.
 
 
 ## Запуск
@@ -9,18 +9,22 @@
 docker compose up --build
 ```
 
-Фронт — http://localhost:5173, бэкенд — http://localhost:8080.
+Фронт — `http://localhost:5173`, бэкенд — `http://localhost:8080`, PostgreSQL — `localhost:5432`.
 
-База создаётся автоматически в `data/`.
+Схема БД создаётся автоматически при старте контейнера PostgreSQL.
 
-## Зависимости
+## Стек
 
-Backend: Go 1.24+ (CGO для sqlite3), Frontend: Node 18+.
+- Backend: Go 1.24+
+- Database: PostgreSQL 16+
+- Frontend: React + TypeScript + Vite
+- Infra: Docker Compose + Nginx
 
 Без докера:
 
 ```
 cd backend
+set DATABASE_URL=postgres://app:secret@localhost:5432/devices?sslmode=disable
 go run ./cmd/main.go
 ```
 
@@ -77,7 +81,7 @@ curl -X DELETE http://localhost:8080/devices/1
 ## Тесты
 
 ```
-cd backend && go test ./...
+cd backend && set TEST_DATABASE_URL=postgres://app:secret@localhost:5432/devices?sslmode=disable && go test ./...
 ```
 
 ## SQL
@@ -89,8 +93,17 @@ cd backend && go test ./...
 
 ## Env-переменные
 
-- `DB_CONNECTION` — путь к sqlite (по умолчанию `device_inventory.db`)
+- `DATABASE_URL` — строка подключения к PostgreSQL
+- `TEST_DATABASE_URL` — строка подключения для интеграционных тестов
 - `PORT` — порт бэкенда (по умолчанию `8080`)
 - `CORS_ORIGIN` — allowed origin (по умолчанию `*`)
 - `VITE_MOCK_API` — `true` чтобы фронт работал без бэкенда
 
+## Примечание по повторному запуску
+
+Если база уже запускалась раньше, volume лучше пересоздать:
+
+```
+docker compose down -v
+docker compose up --build
+```

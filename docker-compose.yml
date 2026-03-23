@@ -1,22 +1,47 @@
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: devices
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d devices"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     build: ./backend
     ports:
       - "8080:8080"
     environment:
-      - DB_CONNECTION=/data/device_inventory.db
-    volumes:
-      - ./data:/data
+      DATABASE_URL: postgres://app:secret@db:5432/devices?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
+
   frontend:
     build: ./frontend
     ports:
       - "5173:80"
+    environment:
+      VITE_API_URL: http://backend:8080
     depends_on:
       backend:
         condition: service_healthy
+
+volumes:
+  pgdata:

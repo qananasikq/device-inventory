@@ -5,33 +5,51 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 
 	"device-inventory/internal/repository"
 )
 
 func setup(t *testing.T) (*DeviceHandler, *repository.DeviceRepo) {
 	t.Helper()
-	db, err := sql.Open("sqlite3", ":memory:")
+
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		dsn = "postgres://app:secret@localhost:5432/devices?sslmode=disable"
+	}
+
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
 
-	_, err = db.Exec(`CREATE TABLE devices (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		hostname TEXT NOT NULL,
-		ip TEXT NOT NULL,
-		location TEXT NOT NULL,
-		is_active INTEGER NOT NULL DEFAULT 1,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	if err := db.Ping(); err != nil {
+		t.Skip("PostgreSQL not available:", err)
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS devices (
+		id          SERIAL PRIMARY KEY,
+		hostname    TEXT NOT NULL,
+		ip          TEXT NOT NULL,
+		location    TEXT NOT NULL,
+		is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+		created_at  TIMESTAMPTZ DEFAULT NOW()
 	)`)
 	if err != nil {
-		t.Skip("sqlite not available:", err)
+		t.Fatalf("create table: %v", err)
 	}
+
+	_, _ = db.Exec("DELETE FROM devices")
+	_, _ = db.Exec("ALTER SEQUENCE devices_id_seq RESTART WITH 1")
+
+	t.Cleanup(func() {
+		db.Exec("DELETE FROM devices")
+		db.Close()
+	})
 
 	repo := repository.NewDeviceRepo(db)
 	return NewDeviceHandler(repo), repo
