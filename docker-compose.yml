@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_CONNECTION=/data/device_inventory.db
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
